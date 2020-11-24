@@ -1,2 +1,7 @@
 *.o
 *.dat
+
+make-matrix
+print-matrix
+mm-serial
+mm-parallel
