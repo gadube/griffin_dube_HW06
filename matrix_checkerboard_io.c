@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mpi.h"
-#include "graph_checkerboard_io.h"
+#include "matrix_checkerboard_io.h"
+
+#define R 0
+#define C 1
 
 void error_out(int ret, int ID, MPI_Status *status)
 {
@@ -10,7 +13,7 @@ void error_out(int ret, int ID, MPI_Status *status)
         char string[MPI_MAX_ERROR_STRING];
         int strsz;
         MPI_Error_string(ret, string, &strsz);
-        debug("%d: error: %s\n", ID );
+        debug("%d: error: %s\n", ID, string);
         MPI_Finalize();
         exit(-1);
     }
@@ -37,7 +40,7 @@ void read_checkerboard_graph (
                 void ***subs,         /* OUT - 2D array */
                 void **storage,       /* OUT - Array elements */
                 MPI_Datatype dtype,   /* IN - Element type */
-                int *N,               /* OUT - Array cols */
+                int **dims,           /* OUT - Array rows/cols */
                 MPI_Comm grid_comm)   /* IN - Communicator */
 {
     int          datum_size = 0;      /* Bytes per elements */
@@ -76,15 +79,15 @@ void read_checkerboard_graph (
 
     if (grid_id == 0)
     {
-        ret = MPI_File_read(fh, N, 1, MPI_INTEGER, &status);
+        ret = MPI_File_read(fh, dims, 2, MPI_INTEGER, &status);
         error_out(ret, ID, &status);
         debug( "%d: Read size from file: %s\n", ID, s );
     }
-    MPI_Bcast(N, 1, MPI_INTEGER, 0, grid_comm);
-    debug( "%d: N = %d\n", ID, *N );
+    MPI_Bcast(dims, 2, MPI_INTEGER, 0, grid_comm);
+    debug( "%d: dims = %dx%d\n", ID, *dims[R], *dims[C] );
 
-    matsize[0] = *N;
-    matsize[1] = *N;
+    matsize[0] = (*dims)[0];
+    matsize[1] = (*dims)[1];
     debug( "%d: matsize[0] = %d, matsize[1] = %d\n", ID, matsize[0], matsize[1] );
 
     subsizes[0] = BLOCK_SIZE(grid_coord[0], grid_size[0], matsize[0]);
@@ -147,7 +150,7 @@ void write_checkerboard_graph (
                 void ***subs,         /* OUT - 2D array */
                 void **storage,       /* OUT - Array elements */
                 MPI_Datatype dtype,   /* IN - Element type */
-                int N,                /* OUT - Array cols */
+                int *dims,            /* OUT - Array cols */
                 MPI_Comm grid_comm)   /* IN - Communicator */
 {
     int          datum_size = 0;      /* Bytes per elements */
@@ -177,7 +180,7 @@ void write_checkerboard_graph (
         char string[MPI_MAX_ERROR_STRING];
         int strsz;
         MPI_Error_string(ret, string, &strsz);
-        debug("%d: error: %s\n", ID );
+        debug("%d: error: %s\n", ID, string );
         MPI_Finalize();
         exit(-1);
     }
@@ -185,7 +188,7 @@ void write_checkerboard_graph (
     debug( "%d: g_size[0] = %d, g_size[1] = %d\n", ID, grid_size[0], grid_size[1] );
     debug( "%d: g_peri[0] = %d, g_peri[1] = %d\n", ID, grid_period[0], grid_period[1] );
     debug( "%d: g_coor[0] = %d, g_coor[1] = %d\n", ID, grid_coord[0], grid_coord[1] );
-    debug( "%d: N = %d\n", ID, N );
+    debug( "%d: dims = %dx%d\n", ID, dims[R], dims[C] );
 
     ret = MPI_File_open(grid_comm, s, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
     error_out(ret, ID, NULL);
@@ -193,13 +196,13 @@ void write_checkerboard_graph (
 
     if (grid_id == 0)
     {
-        ret = MPI_File_write(fh, &N, 1, MPI_INTEGER, &status);
+        ret = MPI_File_write(fh, &dims, 2, MPI_INTEGER, &status);
         error_out(ret, ID, &status);
         debug( "%d: write size to file: %s\n", ID, s );
     }
 
-    matsize[0] = N;
-    matsize[1] = N;
+    matsize[0] = dims[0];
+    matsize[1] = dims[1];
     debug( "%d: matsize[0] = %d, matsize[1] = %d\n", ID, matsize[0], matsize[1] );
 
     subsizes[0] = BLOCK_SIZE(grid_coord[0], grid_size[0], matsize[0]);
