@@ -1,4 +1,4 @@
-CFLAGS = -g -Wall -Wstrict-prototypes
+CFLAGS = -g -Wall -Wstrict-prototypes -DDEBUG
 PROGS = make-matrix print-matrix mm-serial mm-parallel
 LDFLAGS = -lm 
 CC = gcc
