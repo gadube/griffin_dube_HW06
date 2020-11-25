@@ -21,6 +21,7 @@
 #define R 0
 #define C 1
 
+void matrix_multiply(double **M1, double **M2, double ***O, int *dout, int *d1, int *d2);
 void print_matrix(int r, int c, double **A);
 void read_matrix(char *file_name, int *r, int *c, double ***A);
 void write_matrix(char *file_name, int r, int c, double ***A);
@@ -29,7 +30,7 @@ void free_matrix(int r, double ***A);
 int main(int argc, char * argv[]) {
 	char *infile1, *infile2, *outfile;
 	int d1[DIMS], d2[DIMS], dout[DIMS];
-	int i,j,k;
+	int i;
 	double **M1, **M2, **O;
 
 	if (argc != 4){
@@ -48,9 +49,6 @@ int main(int argc, char * argv[]) {
 	read_matrix(infile2, &(d2[R]), &(d2[C]), &M2);
 	printf("Matrix two dimensions: %d x %d\n",d2[R],d2[C]);
 
-	print_matrix(d1[R], d1[C], M1);
-	print_matrix(d2[R], d2[C], M2);
-	
 	//assign output dimensions
 	dout[R] = d1[R];
 	dout[C] = d2[C];
@@ -70,23 +68,28 @@ int main(int argc, char * argv[]) {
 	}
   
 	//perform MMM
-	for (i = 0; i < dout[R]; i++) {
-		for (j = 0; j < dout[C]; j++) {
-			for (k = 0; k < d1[C]; j++) {
-				O[i][j] += M1[i][k]*M2[k][j];	
-			}
-			printf("%4.4f written to Output",O[i][j]);
-		}
-	}
+	matrix_multiply(M1,M2,&O,dout,d1,d2);
 
-	print_matrix(dout[R], dout[C], O);
-
-	write_matrix(outfile, d1[R], d1[C], &O);
+	write_matrix(outfile, dout[R], dout[C], &O);
 
 	free_matrix(d1[R],&M1);
 	free_matrix(d2[R],&M2);
-	free_matrix(dout[R],&M2);
+	free_matrix(dout[R],&O);
 	return 0;
+}
+
+void matrix_multiply(double **M1, double **M2, double ***O, int *dout, int *d1, int *d2) {
+int i,j,k;
+
+	for (i = 0; i < dout[R]; i++) {
+		for (j = 0; j < dout[C]; j++) {
+			for (k = 0; k < d1[C]; k++) {
+				(*O)[i][j] += M1[i][k]*M2[k][j];	
+			}
+		}
+	}
+
+	return;
 }
 
 void print_matrix(int r, int c, double ** A) {
@@ -154,7 +157,7 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 
 void write_matrix(char *file_name, int r, int c, double ***A) {
 
-	FILE *output;
+	FILE *output = NULL;
 	int i,j;
 	double temp;
 	output = fopen(file_name,"w");

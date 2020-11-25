@@ -30,7 +30,7 @@ int main(int argc, char * argv[]) {
     print_matrix(r,c,storage);
 
     for(i = 0; i < r; i++) {
-	free(storage[i]);
+			free(storage[i]);
     }
 
     free(storage);
