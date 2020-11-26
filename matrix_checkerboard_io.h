@@ -37,7 +37,7 @@ void read_checkerboard_graph (
    void ***subs,         /* OUT - 2D array */
    void **storage,       /* OUT - Array elements */
    MPI_Datatype dtype,   /* IN - Element type */
-   int **dims,           /* OUT - Array cols */
+   int *dims,           /* OUT - Array cols */
    MPI_Comm grid_comm);  /* IN - Communicator */
 
 void write_checkerboard_graph (

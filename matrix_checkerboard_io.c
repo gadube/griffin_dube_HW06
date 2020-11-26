@@ -40,7 +40,7 @@ void read_checkerboard_graph (
                 void ***subs,         /* OUT - 2D array */
                 void **storage,       /* OUT - Array elements */
                 MPI_Datatype dtype,   /* IN - Element type */
-                int **dims,           /* OUT - Array rows/cols */
+                int *dims,           /* OUT - Array rows/cols */
                 MPI_Comm grid_comm)   /* IN - Communicator */
 {
     int          datum_size = 0;      /* Bytes per elements */
@@ -84,10 +84,10 @@ void read_checkerboard_graph (
         debug( "%d: Read size from file: %s\n", ID, s );
     }
     MPI_Bcast(dims, 2, MPI_INTEGER, 0, grid_comm);
-    debug( "%d: dims = %dx%d\n", ID, *dims[R], *dims[C] );
+    debug( "%d: dims = %dx%d\n", ID, dims[R], dims[C] );
 
-    matsize[0] = (*dims)[0];
-    matsize[1] = (*dims)[1];
+    matsize[0] = dims[0];
+    matsize[1] = dims[1];
     debug( "%d: matsize[0] = %d, matsize[1] = %d\n", ID, matsize[0], matsize[1] );
 
     subsizes[0] = BLOCK_SIZE(grid_coord[0], grid_size[0], matsize[0]);

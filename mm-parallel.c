@@ -15,6 +15,10 @@
 #define NDIMS 2
 #define R 0
 #define C 1
+#define LEFT 0
+#define RIGHT 1
+#define UP 2
+#define DOWN 3
 
 void getArgs(int argc, char *argv[], char **infile1, char **infile2, char **outfile);
 void create_communicators(int size, int rank, MPI_Comm *cart_comm);
@@ -41,17 +45,20 @@ int main(int argc, char *argv[])
 	MPI_Barrier(MPI_COMM_WORLD);
 	double timeIO = MPI_Wtime();
 	/* read in file and distribute among procs */
-	read_checkerboard_graph(infile1, (void ***) &M1, (void **) &storage1, MPI_DOUBLE, (int **) &d1, GRID_COMM);
-	read_checkerboard_graph(infile2, (void ***) &M2, (void **) &storage2, MPI_DOUBLE, (int **) &d2, GRID_COMM);
+	read_checkerboard_graph(infile1, (void ***) &M1, (void **) &storage1, MPI_DOUBLE, (int *) d1, GRID_COMM);
+	read_checkerboard_graph(infile2, (void ***) &M2, (void **) &storage2, MPI_DOUBLE, (int *) d2, GRID_COMM);
 	debug("%d: in1 dims = %dx%d, in2 dims = %dx%d\n",rank,d1[R],d1[C],d2[R],d2[C]);
+	dout[R] = d1[R];
+	dout[C] = d2[C];
 
+	MPI_Barrier(MPI_COMM_WORLD);
 	double timeNOIO = MPI_Wtime();
 	/* matrix multiply */
 	matrix_multiply(M1, M2, &O, d1, d2, (int **) &dout, GRID_COMM);
 	timeNOIO = MPI_Wtime() - timeNOIO;
 
 	/* write matrix to file */
-	write_checkerboard_graph(outfile, (void ***) &O, (void **) &storageO, MPI_DOUBLE, dout, GRID_COMM);
+//	write_checkerboard_graph(outfile, (void ***) &O, (void **) &storageO, MPI_DOUBLE, dout, GRID_COMM);
 	timeIO = MPI_Wtime() - timeIO;
 
 	double maxTimeIO,maxTimeNOIO;
@@ -68,8 +75,10 @@ int main(int argc, char *argv[])
 
 void matrix_multiply(double **A, double **B, double ***O,int *d1, int *d2, int **dout, MPI_Comm cart_comm)
 {
-	int grid_id, grid_size[NDIMS], grid_coord[NDIMS], grid_period[NDIMS];
+	int grid_id, grid_size[NDIMS], grid_coord[NDIMS], grid_period[NDIMS], subsz1[NDIMS], subsz2[NDIMS];
+	int nbr[4];
 	int ID, ret, src, dest;
+	MPI_Status status;
 
 	MPI_Comm_rank(cart_comm, &grid_id); ID = grid_id;
 
@@ -81,15 +90,37 @@ void matrix_multiply(double **A, double **B, double ***O,int *d1, int *d2, int *
   debug( "%d: g_size[0] = %d, g_size[1] = %d\n", ID, grid_size[R], grid_size[C] );
   debug( "%d: g_peri[0] = %d, g_peri[1] = %d\n", ID, grid_period[R], grid_period[C] );
   debug( "%d: g_coor[0] = %d, g_coor[1] = %d\n", ID, grid_coord[R], grid_coord[C] );
+
+  subsz1[R] = BLOCK_SIZE(grid_coord[R], grid_size[R], d1[R]);
+  subsz1[C] = BLOCK_SIZE(grid_coord[C], grid_size[C], d1[C]);
+  debug( "%d: subsz[0] = %d, subsz[1] = %d\n", ID, subsz1[R], subsz1[C] );
+  subsz2[R] = BLOCK_SIZE(grid_coord[R], grid_size[R], d2[R]);
+  subsz2[C] = BLOCK_SIZE(grid_coord[C], grid_size[C], d2[C]);
+  debug( "%d: subsz[0] = %d, subsz[1] = %d\n", ID, subsz2[R], subsz2[C] );
+
+
+	ret = MPI_Cart_shift(cart_comm, R, -1, &nbr[RIGHT], &nbr[LEFT]); //find neighbors
+	error_out(ret, ID, NULL);
+	ret = MPI_Cart_shift(cart_comm, C, -1, &nbr[DOWN], &nbr[UP]); //find neighbors
+	error_out(ret, ID, NULL);
+	debug("%d: Neighbors: left = %d, right = %d,up = %d, down = %d\n",ID,nbr[LEFT],nbr[RIGHT],nbr[UP],nbr[DOWN]);
 	
 	debug("%d: Perfoming initial alignment...\n",ID);
-	ret = MPI_Cart_shift(cart_comm, R, grid_coord[R], &src, &dest); //initial alignment of A
+	ret = MPI_Cart_shift(cart_comm, R, -grid_coord[C], &src, &dest); //initial alignment of A
 	error_out(ret, ID, NULL);
-	debug("%d: shift src = %d dest = %d\n",ID,src,dest);
+	debug("%d: A shift src = %d dest = %d\n",ID,src,dest);
+	ret = MPI_Sendrecv_replace(*A, subsz1[R]*subsz1[C], MPI_DOUBLE, dest, 1, src, 1, cart_comm, &status);
+	error_out(ret, ID, &status);
+	debug("%d: Completed A initial alignment...\n",ID);
 
-	ret = MPI_Cart_shift(cart_comm, C, grid_coord[C], &src, &dest); //initial alignment of B
+	ret = MPI_Cart_shift(cart_comm, C, -grid_coord[R], &src, &dest); //initial alignment of B
 	error_out(ret, ID, NULL);
-	debug("%d: shift src = %d dest = %d\n",ID,src,dest);
+	debug("%d: B shift src = %d dest = %d\n",ID,src,dest);
+	ret = MPI_Sendrecv_replace(*B, subsz2[R]*subsz2[C], MPI_DOUBLE, dest, 1, src, 1, cart_comm, &status);
+	error_out(ret, ID, &status);
+	debug("%d: Completed B initial alignment...\n",ID);
+
+
 
 
 	return;
