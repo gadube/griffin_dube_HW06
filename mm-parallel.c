@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <math.h>
+#include <assert.h>
 #include <mpi.h>
 #include "matrix_checkerboard_io.h"
 
@@ -20,9 +22,26 @@
 #define UP 2
 #define DOWN 3
 
-void getArgs(int argc, char *argv[], char **infile1, char **infile2, char **outfile);
+void get_args(int argc, char *argv[], char **infile1, char **infile2, char **outfile);
 void create_communicators(int size, int rank, MPI_Comm *cart_comm);
-void matrix_multiply(double **A, double **B, double ***O,int *d1, int *d2, int **dout, MPI_Comm cart_comm);
+void matrix_multiply(double **A, double **B, double ***O,int *d1, int *d2, int *dout, MPI_Comm cart_comm);
+void mmm(int *dim1, int *dim2, double **A, double **B, double ***Out);
+void allocate(double **subs, double *storage, int *dims, MPI_Comm cart_comm);
+void free_matrix(double ***O, double **storage);
+void print_matrix(int r, int c, double ** A) {
+    int i,j;
+    printf("Array is a %d x %d matrix\n\n",r,c);
+    for(i = 0; i < r; i++) {
+        for(j = 0; j < c; j++) {
+					printf("%10.3f ",A[i][j]);
+        }
+        printf("\n");
+    }
+	printf("\n");
+
+	return;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -38,7 +57,7 @@ int main(int argc, char *argv[])
 	debug("MPI Rank: %d\n",rank);
 
 	/* read in arguments */
- 	getArgs(argc, argv, &infile1, &infile2, &outfile);
+ 	get_args(argc, argv, &infile1, &infile2, &outfile);
 
 	/* create communicator for checkerboard pattern */
 	create_communicators(size, rank, &GRID_COMM);
@@ -46,19 +65,35 @@ int main(int argc, char *argv[])
 	double timeIO = MPI_Wtime();
 	/* read in file and distribute among procs */
 	read_checkerboard_graph(infile1, (void ***) &M1, (void **) &storage1, MPI_DOUBLE, (int *) d1, GRID_COMM);
+	if (d1[0] % (int)sqrt(size) != 0 || d1[C] % (int)sqrt(size) != 0)
+	{
+		if (rank == 0) fprintf(stderr,"Invalid size, not divisible by sqrt(num_procs).\n");
+		MPI_Comm_free(&GRID_COMM);
+		MPI_Finalize();
+		exit(0);
+	}
 	read_checkerboard_graph(infile2, (void ***) &M2, (void **) &storage2, MPI_DOUBLE, (int *) d2, GRID_COMM);
+	if (d1[0] % (int)sqrt(size) != 0 || d1[C] % (int)sqrt(size) != 0)
+	{
+		if (rank == 0) fprintf(stderr,"Invalid size, not divisible by sqrt(num_procs).\n");
+		MPI_Comm_free(&GRID_COMM);
+		MPI_Finalize();
+		exit(0);
+	}
 	debug("%d: in1 dims = %dx%d, in2 dims = %dx%d\n",rank,d1[R],d1[C],d2[R],d2[C]);
 	dout[R] = d1[R];
 	dout[C] = d2[C];
+	allocate(O, storageO, dout, GRID_COMM);
+	/*print_matrix(dout[R],dout[C],O);*/
+	
 
-	MPI_Barrier(MPI_COMM_WORLD);
 	double timeNOIO = MPI_Wtime();
 	/* matrix multiply */
-	matrix_multiply(M1, M2, &O, d1, d2, (int **) &dout, GRID_COMM);
+	//matrix_multiply(M1, M2, &O, d1, d2, dout, GRID_COMM);
 	timeNOIO = MPI_Wtime() - timeNOIO;
 
 	/* write matrix to file */
-//	write_checkerboard_graph(outfile, (void ***) &O, (void **) &storageO, MPI_DOUBLE, dout, GRID_COMM);
+	write_checkerboard_graph(outfile, (void ***) &O, (void **) &storageO, MPI_DOUBLE, dout, GRID_COMM);
 	timeIO = MPI_Wtime() - timeIO;
 
 	double maxTimeIO,maxTimeNOIO;
@@ -68,12 +103,15 @@ int main(int argc, char *argv[])
 	if (rank == 0) printf("Max Time with IO: %4.6f\nMax Compute Time: %4.6f\n",maxTimeIO,maxTimeNOIO);
 	
 	/* free memory */
+  free_matrix(&M1, &storage1);
+  free_matrix(&M2, &storage2);
+	free_matrix(&O, &storageO);
 	MPI_Comm_free(&GRID_COMM);
   MPI_Finalize();
   return 0;
 }
 
-void matrix_multiply(double **A, double **B, double ***O,int *d1, int *d2, int **dout, MPI_Comm cart_comm)
+void matrix_multiply(double **A, double **B, double ***O,int *d1, int *d2, int *dout, MPI_Comm cart_comm)
 {
 	int grid_id, grid_size[NDIMS], grid_coord[NDIMS], grid_period[NDIMS], subsz1[NDIMS], subsz2[NDIMS];
 	int nbr[4];
@@ -109,21 +147,56 @@ void matrix_multiply(double **A, double **B, double ***O,int *d1, int *d2, int *
 	ret = MPI_Cart_shift(cart_comm, R, -grid_coord[C], &src, &dest); //initial alignment of A
 	error_out(ret, ID, NULL);
 	debug("%d: A shift src = %d dest = %d\n",ID,src,dest);
-	ret = MPI_Sendrecv_replace(*A, subsz1[R]*subsz1[C], MPI_DOUBLE, dest, 1, src, 1, cart_comm, &status);
+	ret = MPI_Sendrecv_replace(&A, subsz1[R]*subsz1[C], MPI_DOUBLE, dest, 1, src, 1, cart_comm, &status);
 	error_out(ret, ID, &status);
 	debug("%d: Completed A initial alignment...\n",ID);
 
 	ret = MPI_Cart_shift(cart_comm, C, -grid_coord[R], &src, &dest); //initial alignment of B
 	error_out(ret, ID, NULL);
 	debug("%d: B shift src = %d dest = %d\n",ID,src,dest);
-	ret = MPI_Sendrecv_replace(*B, subsz2[R]*subsz2[C], MPI_DOUBLE, dest, 1, src, 1, cart_comm, &status);
+	ret = MPI_Sendrecv_replace(&B, subsz2[R]*subsz2[C], MPI_DOUBLE, dest, 1, src, 1, cart_comm, &status);
 	error_out(ret, ID, &status);
 	debug("%d: Completed B initial alignment...\n",ID);
 
+	for (int i = 0; i < grid_size[R]; i++) {
+		mmm(subsz1, subsz2, A, B, O);	
+		ret = MPI_Sendrecv_replace(&A, subsz1[R]*subsz1[C], MPI_DOUBLE, nbr[LEFT], 1, nbr[RIGHT], 1, cart_comm, &status);
+		error_out(ret, ID, &status);
+		ret = MPI_Sendrecv_replace(&B, subsz2[R]*subsz2[C], MPI_DOUBLE, nbr[UP], 1, nbr[DOWN], 1, cart_comm, &status);
+		error_out(ret, ID, &status);
+	}
+	
+	debug("%d: Reversing alignment...\n",ID);
+	ret = MPI_Cart_shift(cart_comm, R, +grid_coord[C], &src, &dest); //initial alignment of A
+	error_out(ret, ID, NULL);
+	debug("%d: A shift src = %d dest = %d\n",ID,src,dest);
+	ret = MPI_Sendrecv_replace(&A, subsz1[R]*subsz1[C], MPI_DOUBLE, dest, 1, src, 1, cart_comm, &status);
+	error_out(ret, ID, &status);
+	debug("%d: Completed A final alignment...\n",ID);
 
+	ret = MPI_Cart_shift(cart_comm, C, +grid_coord[R], &src, &dest); //initial alignment of B
+	error_out(ret, ID, NULL);
+	debug("%d: B shift src = %d dest = %d\n",ID,src,dest);
+	ret = MPI_Sendrecv_replace(&B, subsz2[R]*subsz2[C], MPI_DOUBLE, dest, 1, src, 1, cart_comm, &status);
+	error_out(ret, ID, &status);
+	debug("%d: Completed B final alignment...\n",ID);
 
 
 	return;
+}
+
+void mmm(int *dim1, int *dim2, double **A, double **B, double ***Out)
+{
+	debug("Subsize 1 = {%d,%d}, Subsize 2 = {%d,%d}",dim1[R],dim1[C],dim2[R],dim2[C]);
+	for (int i = 0; i < dim1[R]; i++) {
+		for (int j = 0; j < dim2[C]; j++) {
+			for (int k = 0; k < dim1[C]; k++) {
+				(*Out)[i][j] += A[i][k]*B[k][j];	
+			}
+		}	
+	}
+
+  return;
 }
 
 void create_communicators(int size, int rank, MPI_Comm *cart_comm)
@@ -151,7 +224,7 @@ void create_communicators(int size, int rank, MPI_Comm *cart_comm)
 	return;
 }
 
-void getArgs(int argc, char *argv[], char **infile1, char **infile2, char **outfile)
+void get_args(int argc, char *argv[], char **infile1, char **infile2, char **outfile)
 {
   if(argc != 4) {
     printf("Usage: ./exec <infile1> <infile2> <outfile>\n");
@@ -166,5 +239,50 @@ void getArgs(int argc, char *argv[], char **infile1, char **infile2, char **outf
 	debug("Input File 1: %s\nInput File 2: %s\nOutput File: %s\n", *infile1,*infile2,*outfile);
 }
 
+void allocate(double **subs, double *storage, int *dims, MPI_Comm cart_comm)
+{
+		int i, ID, ret, grid_id;
+		int matsize[NDIMS], subsizes[NDIMS], starts[NDIMS];
+		int grid_coord[NDIMS], grid_size[NDIMS], grid_period[NDIMS];
+		double **lptr = NULL, *rptr = NULL;
 
+		MPI_Comm_rank(cart_comm, &grid_id); ID = grid_id;
+    ret = MPI_Cart_get (cart_comm, NDIMS, grid_size, grid_period, grid_coord);
+		error_out(ret, ID, NULL);
+	
+    matsize[0] = dims[0];
+    matsize[1] = dims[1];
+    debug( "%d: matsize[0] = %d, matsize[1] = %d\n", ID, matsize[0], matsize[1] );
 
+    subsizes[0] = BLOCK_SIZE(grid_coord[0], grid_size[0], matsize[0]);
+    subsizes[1] = BLOCK_SIZE(grid_coord[1], grid_size[1], matsize[1]);
+    debug( "%d: subsz[0] = %d, subsz[1] = %d\n", ID, subsizes[0], subsizes[1] );
+
+    starts[0] = BLOCK_LOW(grid_coord[0], grid_size[0], matsize[0]);
+    starts[1] = BLOCK_LOW(grid_coord[1], grid_size[1], matsize[1]);
+    debug( "%d: starts[0] = %d, starts[1] = %d\n", ID, starts[0], starts[1] );
+
+    /* Dynamically allocate two-dimensional matrix 'subs' */
+
+    storage = (double *) calloc(subsizes[0] * subsizes[1], sizeof(double));
+    subs = (double **) calloc(subsizes[0], sizeof(double *));
+    lptr = (double **) subs;
+    rptr = (double *) storage;
+    for (i = 0; i < subsizes[0]; i++)
+    {
+        *(lptr++) = (double *) rptr;
+        rptr += (subsizes[1] * sizeof(double));
+    }
+
+		return;
+}
+
+void free_matrix(double ***subs, double **storage)
+{
+	free(*storage);
+	*storage = NULL;
+	free(*subs);
+	*subs = NULL;
+
+	return;
+}

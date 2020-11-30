@@ -196,7 +196,7 @@ void write_checkerboard_graph (
 
     if (grid_id == 0)
     {
-        ret = MPI_File_write(fh, &dims, 2, MPI_INTEGER, &status);
+        ret = MPI_File_write(fh, dims, 2, MPI_INTEGER, &status);
         error_out(ret, ID, &status);
         debug( "%d: write size to file: %s\n", ID, s );
     }
