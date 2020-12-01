@@ -30,6 +30,7 @@ void allocate_matrix(void ***subs, void **storage, MPI_Datatype dtype, int rows,
 void matrix_multiplication(double **subsA, double *storageA, double **subsB, double *storageB, double **subsC, \
 		                       double *storageC, int *dA, int *dB, int *dC, MPI_Comm grid_comm);
 void mmm(int lr, int lc, int inner, double **subsA, double **subsB, double **subsC);
+void free_array(double ***subs, double **storage);
 
 int main(int argc, char *argv[])
 {
@@ -60,32 +61,40 @@ int main(int argc, char *argv[])
 	allocate_matrix((void ***)&subsC, (void **)&storageC, MPI_DOUBLE, dC[R], dC[C], GRID_COMM);
 	debug("%d: Completed Allocating Output Submatrix...\n", rank);
 
-	/*int grid_id, local_rows, local_cols;*/
-	/*int grid_size[NDIMS], grid_period[NDIMS], grid_coord[NDIMS];*/
-
-	/*MPI_Comm_rank(GRID_COMM, &grid_id);*/
-	/*MPI_Cart_get(GRID_COMM, NDIMS, grid_size, grid_period, grid_coord);*/
-
-	/*local_rows = BLOCK_SIZE(grid_coord[R], grid_size[R], dC[R]);*/
-	/*local_cols = BLOCK_SIZE(grid_coord[C], grid_size[C], dC[C]);*/
-	/*for (int i = 0; i < local_rows; i++)*/
-	/*{*/
-		/*for (int j = 0; j < local_cols; j++)*/
-		/*{*/
-			/*subsC[i][j] = (double)rank;*/
-		/*}*/
-	/*}*/
-
 	/* perform matrix multiplication */
+	double time = MPI_Wtime();
 	matrix_multiplication(subsA, storageA, subsB, storageB, subsC, storageC, dA, dB, dC, GRID_COMM);
+	time = MPI_Wtime() - time;
+
+	/* find timing values */
+	double maxTime;
+	MPI_Reduce(&time, &maxTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+	if (rank == 0) printf("Num. Processes: %d\nMatrix Size: %dx%d\nCompute Time: %f\n", size, dC[R], dC[C], maxTime);
 	
 	/* write C output to file */
 	write_checkerboard_graph(outfile, (void ***)&subsC, (void **)&storageC, MPI_DOUBLE, dC[R], dC[C], GRID_COMM);
 	
+	/* clean up memory */
+	free_array(&subsA, &storageA);
+	free_array(&subsB, &storageB);
+	MPI_Comm_free(&GRID_COMM);
 	MPI_Finalize();
 	return 0;
 }
 
+/* frees 2d allocated array */
+void free_array(double ***subs, double **storage)
+{
+	free(*storage);
+	*storage = NULL;
+	free(*subs);
+	*subs = NULL;
+
+	return;
+}
+
+/* matrix multiplication kernel */
 void mmm(int lr, int lc, int inner, double **subsA, double **subsB, double **subsC)
 {
 	int i, j, k;
@@ -103,6 +112,7 @@ void mmm(int lr, int lc, int inner, double **subsA, double **subsB, double **sub
 	return;
 }
 
+/* handles communication and performs matrix multiplication */
 void matrix_multiplication(double **subsA, double *storageA, double **subsB, double *storageB, double **subsC, \
 		                       double *storageC, int *dA, int *dB, int *dC, MPI_Comm grid_comm)
 {
@@ -136,6 +146,7 @@ void matrix_multiplication(double **subsA, double *storageA, double **subsB, dou
 	MPI_Sendrecv_replace(storageB, lrB * lcB, MPI_DOUBLE, dest, 1, src, 1, grid_comm, &status);
 	debug("%d: Shifting from Proc %d to Proc %d for B\n",grid_id,src,dest);
 
+	/* compute partial multiplication sum and shift */
 	for (int i = 0; i < grid_size[R]; i++)
 	{
 		mmm(local_rows, local_cols, lcA, subsA, subsB, subsC);
@@ -149,6 +160,7 @@ void matrix_multiplication(double **subsA, double *storageA, double **subsB, dou
 	return;
 }
 
+/* allocates 2d sub-matrix with storage pointer */
 void allocate_matrix(void ***subs, void **storage, MPI_Datatype dtype, int rows, int cols, MPI_Comm grid_comm)
 {
 	int datum_size, grid_id, local_rows, local_cols;
@@ -177,6 +189,7 @@ void allocate_matrix(void ***subs, void **storage, MPI_Datatype dtype, int rows,
 	return;
 }
 
+/* create grid communicator */
 void create_grid_comm(MPI_Comm *comm)
 {
 	int size, rank, dims[NDIMS], period[NDIMS];

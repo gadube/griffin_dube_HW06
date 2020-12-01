@@ -68,7 +68,16 @@ int main(int argc, char * argv[]) {
 	}
   
 	//perform MMM
+	clock_t start, end;
+	double time;
+	start = clock();
 	matrix_multiply(M1,M2,&O,dout,d1,d2);
+	end = clock();
+
+	time = ((double)(end - start)) / CLOCKS_PER_SEC;
+
+	printf("Num. Processes: 1\nMatrix Size: %dx%d\nCompute Time: %f\n",dout[R],dout[C],time);
+	
 
 	write_matrix(outfile, dout[R], dout[C], &O);
 
