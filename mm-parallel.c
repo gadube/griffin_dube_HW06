@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 	create_grid_comm(&GRID_COMM);
 	MPI_Comm_rank(GRID_COMM, &rank);
 
-	/*read input matrices A and B */
+	/* read input matrices A and B */
 	read_checkerboard_matrix(infile1, (void ***)&subsA, (void **)&storageA, MPI_DOUBLE, &(dA[R]), &(dA[C]), GRID_COMM);
 	read_checkerboard_matrix(infile2, (void ***)&subsB, (void **)&storageB, MPI_DOUBLE, &(dB[R]), &(dB[C]), GRID_COMM);
 	debug("%d: dA = %d x %d; dB = %d x %d;\n",rank, dA[R], dA[C], dB[R], dB[C]);
@@ -124,11 +124,11 @@ void matrix_multiplication(double **subsA, double *storageA, double **subsB, dou
 	MPI_Comm_rank(grid_comm, &grid_id);
 	MPI_Cart_get(grid_comm, NDIMS, grid_size, grid_period, grid_coord);
 
+	/* find local row and column sizes for each proc */
 	lrA = BLOCK_SIZE(grid_coord[R], grid_size[R], dA[R]);
 	lcA = BLOCK_SIZE(grid_coord[C], grid_size[C], dA[C]);
 	lrB = BLOCK_SIZE(grid_coord[R], grid_size[R], dB[R]);
 	lcB = BLOCK_SIZE(grid_coord[C], grid_size[C], dB[C]);
-
 	local_rows = BLOCK_SIZE(grid_coord[R], grid_size[R], dC[R]);
 	local_cols = BLOCK_SIZE(grid_coord[C], grid_size[C], dC[C]);
 	debug("%d: local_rows = %d; local_cols = %d;\n",grid_id, local_rows, local_cols);
@@ -172,10 +172,12 @@ void allocate_matrix(void ***subs, void **storage, MPI_Datatype dtype, int rows,
 	MPI_Comm_rank(grid_comm, &grid_id);
 	MPI_Cart_get(grid_comm, NDIMS, grid_size, grid_period, grid_coord);
 
+	/*find number of local cols and rows*/
 	local_rows = BLOCK_SIZE(grid_coord[R], grid_size[R], rows);
 	local_cols = BLOCK_SIZE(grid_coord[C], grid_size[C], cols);
 	debug("%d: local_rows = %d; local_cols = %d;\n",grid_id, local_rows, local_cols);
 	
+	/*alloc and zero memory for subblock*/
 	*storage = my_calloc(grid_id, local_rows * local_cols, datum_size);
 	*subs = (void **) my_calloc(grid_id, local_rows, PTR_SIZE);
 	lptr = (void *) *subs;
@@ -197,7 +199,7 @@ void create_grid_comm(MPI_Comm *comm)
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	
-	dims[R] = dims[C] = (int)sqrt(size);
+	dims[R] = dims[C] = (int)sqrt(size); //works only with square # procs
 	if (dims[R] * dims[C] != size)
 	{
 		debug("%d: Error in create_grid_comm: invalid nprocs\n", rank);

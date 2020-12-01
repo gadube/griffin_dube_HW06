@@ -2,7 +2,7 @@
  * Griffin Dube
  *
  * Matrix-Matrix multiplication.
- * mm-serial input_file1 input_file2 output_file
+ * ./mm-serial input_file1 input_file2 output_file
  * Reads 2 input matrix files and computes the product of the 
  * matrix in input_file1 with the matrix in input_file2 (remember 
  * in matrix multiply, order matters), and then writes resulting 
@@ -22,7 +22,6 @@
 #define C 1
 
 void matrix_multiply(double **M1, double **M2, double ***O, int *dout, int *d1, int *d2);
-void print_matrix(int r, int c, double **A);
 void read_matrix(char *file_name, int *r, int *c, double ***A);
 void write_matrix(char *file_name, int r, int c, double ***A);
 void free_matrix(int r, double ***A);
@@ -33,6 +32,7 @@ int main(int argc, char * argv[]) {
 	int i;
 	double **M1, **M2, **O;
 
+	/*get input arguments*/
 	if (argc != 4){
 		printf("Usage: ./exec <input_file1> <input_file2> <output_file>");
 		exit(0);
@@ -43,17 +43,17 @@ int main(int argc, char * argv[]) {
 		outfile = argv[3];
 	}
 
-	//load input matrices
+	/*load input matrices*/
 	read_matrix(infile1, &(d1[R]), &(d1[C]), &M1);
 	printf("Matrix one dimensions: %d x %d\n",d1[R],d1[C]);
 	read_matrix(infile2, &(d2[R]), &(d2[C]), &M2);
 	printf("Matrix two dimensions: %d x %d\n",d2[R],d2[C]);
 
-	//assign output dimensions
+	/*assign output dimensions*/
 	dout[R] = d1[R];
 	dout[C] = d2[C];
 
-	//allocate output matrix
+	/*allocate output matrix*/
 	O = (double **) malloc(dout[R] * sizeof(double *));
 	if(O == NULL) {
 		printf("Output matrix malloc failed exiting...\n");
@@ -67,26 +67,29 @@ int main(int argc, char * argv[]) {
 		}
 	}
   
-	//perform MMM
+	/*perform MMM*/
 	clock_t start, end;
 	double time;
 	start = clock();
 	matrix_multiply(M1,M2,&O,dout,d1,d2);
 	end = clock();
 
+	/*get timing*/
 	time = ((double)(end - start)) / CLOCKS_PER_SEC;
 
 	printf("Num. Processes: 1\nMatrix Size: %dx%d\nCompute Time: %f\n",dout[R],dout[C],time);
 	
-
+	/*write matrix to file*/
 	write_matrix(outfile, dout[R], dout[C], &O);
 
+	/*clean up mem*/
 	free_matrix(d1[R],&M1);
 	free_matrix(d2[R],&M2);
 	free_matrix(dout[R],&O);
 	return 0;
 }
 
+/*function to handle matrix multiplication */
 void matrix_multiply(double **M1, double **M2, double ***O, int *dout, int *d1, int *d2) {
 int i,j,k;
 
@@ -101,20 +104,7 @@ int i,j,k;
 	return;
 }
 
-void print_matrix(int r, int c, double ** A) {
-    int i,j;
-    printf("Array is a %d x %d matrix\n\n",r,c);
-    for(i = 0; i < r; i++) {
-        for(j = 0; j < c; j++) {
-					printf("%10.3f ",A[i][j]);
-        }
-        printf("\n");
-    }
-	printf("\n");
-
-	return;
-}
-
+/*function to read matrix*/
 void read_matrix(char *file_name, int *r, int *c, double ***A) {
 
 	FILE *input;
@@ -127,6 +117,7 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 		exit(0);
 	}	
 
+	/*read row and col sizes*/
 	if(fread(r,sizeof(int),1,input) != 1) {
 		printf("error reading matrix row size exiting...\n");
 		exit(0);
@@ -136,7 +127,7 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 		exit(0);
 	}
 
-	//read in matrix values
+	/*alloc matrix*/
 	AStorage = (double **) malloc(*r * sizeof(double *));
 	if(AStorage == NULL) {
 		printf("matrix malloc failed exiting...\n");
@@ -149,6 +140,8 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 			exit(0);
 		}
 	}
+	
+	/*read in matrix values*/
 	for(i = 0; i < *r; i++) {
 		for(j = 0; j < *c; j++) {
 			if(fread(&AStorage[i][j],sizeof(double),1,input) != 1) {
@@ -158,12 +151,13 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 		}
 	}
 
+	/*assign to proper matrix*/
 	*A = AStorage;
-	//assign to proper matrix
 	fclose(input);
 	return;
 }
 
+/*write matrix to specified file*/
 void write_matrix(char *file_name, int r, int c, double ***A) {
 
 	FILE *output = NULL;
@@ -175,6 +169,7 @@ void write_matrix(char *file_name, int r, int c, double ***A) {
 		exit(0);
 	}	
 
+	/*write column and row sizes to file*/
 	if(fwrite(&r,sizeof(int),1,output) != 1) {
 		printf("error writing matrix rows exiting...\n");
 		exit(0);
@@ -183,7 +178,7 @@ void write_matrix(char *file_name, int r, int c, double ***A) {
 		printf("error writing matrix columns exiting...\n");
 		exit(0);
 	}
-	//write in matrix values
+	/*write in matrix values*/
 	for(i = 0; i < r; i++) {
 		for(j = 0; j < c; j++) {
 			temp = (*A)[i][j];
@@ -193,11 +188,12 @@ void write_matrix(char *file_name, int r, int c, double ***A) {
 			}
 		}
 	}
-	//assign to proper matrix
+
 	fclose(output);
 	return;
 }
 
+/*function used to free matrix*/
 void free_matrix(int r,double ***A){
 	for(int i =0; i < r; i++) {
 			free((*A)[i]);

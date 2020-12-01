@@ -40,13 +40,14 @@ int main(int argc, char * argv[]) {
 		double val;
     char * outputname;
     double **Mstorage;
-//    srand(time(NULL));
+    srand(time(NULL));
 
     if(argc != 11) {
         printf("Usage: ./exec -r <rows> -c <cols> -l <low> -u <up> -o <fname>\n");
         exit(0);
     }
-
+	  
+		/* grab command line arguments */
     while((opt = getopt(argc,argv,"r:c:l:u:o:")) != -1) {
         switch(opt) {
             case 'r':
@@ -70,10 +71,11 @@ int main(int argc, char * argv[]) {
         }
     }
 
+		/* alloc space for matrix */
     Mstorage = (double **) malloc(rows * sizeof(double *));
     if(Mstorage == NULL) {
-	printf("failed to allocate matrix exiting ..\n");
-	exit(0);
+			printf("failed to allocate matrix exiting ..\n");
+			exit(0);
     }
     for(i = 0; i < rows; i++) {
 	    Mstorage[i] = (double *) malloc(cols * sizeof(double));
@@ -83,16 +85,20 @@ int main(int argc, char * argv[]) {
 	    }
     }
 
+		/* compute value in matrix element */
     for(i = 0; i < rows; i++) {
         for(j = 0; j < cols; j++) {
 						val = ((double)low + ((double)rand() / (up - low))) / 1000.0;
             Mstorage[i][j] = val;  
         }
     }
+
+		/* write to file */
     write_matrix(outputname,rows,cols,&Mstorage);	
     return 0;
 }
 
+/* write matrix to file */
 void write_matrix(char *file_name, int r, int c, double ***A) {
 
 	FILE *output;
@@ -104,6 +110,7 @@ void write_matrix(char *file_name, int r, int c, double ***A) {
 		exit(0);
 	}	
 
+	/* write mat. dimensions */
 	if(fwrite(&r,sizeof(int),1,output) != 1) {
 		printf("error writing matrix rows exiting...\n");
 		exit(0);
@@ -112,7 +119,8 @@ void write_matrix(char *file_name, int r, int c, double ***A) {
 		printf("error writing matrix columns exiting...\n");
 		exit(0);
 	}
-	//write in matrix values
+
+	/*write in matrix values*/
 	for(i = 0; i < r; i++) {
 		for(j = 0; j < c; j++) {
 			temp = (*A)[i][j];
@@ -122,7 +130,8 @@ void write_matrix(char *file_name, int r, int c, double ***A) {
 			}
 		}
 	}
-	//assign to proper matrix
+
+	/* clean up mem */
 	fclose(output);
 	for(i =0; i < r; i++) {
 		free((*A)[i]);

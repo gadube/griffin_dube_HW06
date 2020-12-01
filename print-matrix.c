@@ -17,6 +17,8 @@ int main(int argc, char * argv[]) {
     char * inputname;
     double ** storage;
     int r,c,i;    
+
+		/*grab input arguments*/
     if(argc != 2) {
         printf("Usage: ./exec -i input-file-name.dat\n");
         exit(0);
@@ -29,17 +31,15 @@ int main(int argc, char * argv[]) {
     read_matrix(inputname,&r,&c,&storage);
     print_matrix(r,c,storage);
 
+		/*clean up mem */
     for(i = 0; i < r; i++) {
 			free(storage[i]);
     }
-
     free(storage);
-
-
     return 0;
-
 }
 
+/*function to print matrices*/
 void print_matrix(int r, int c, double ** A) {
     int i,j;
     printf("Array is a %d x %d matrix\n\n",r,c);
@@ -54,6 +54,7 @@ void print_matrix(int r, int c, double ** A) {
 	return;
 }
 
+/*reads matrix from file, stores row/col size in r,c*/
 void read_matrix(char *file_name, int *r, int *c, double ***A) {
 
 	FILE *input;
@@ -66,6 +67,7 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 		exit(0);
 	}	
 
+	/* read row and col sizes */
 	if(fread(r,sizeof(int),1,input) != 1) {
 		printf("error reading matrix row size exiting...\n");
 		exit(0);
@@ -77,7 +79,7 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 
 	printf("Reading... Rows = %d; Cols = %d;\n",*r,*c);
 
-	//read in matrix values
+	/*allocate matrix storage*/
 	AStorage = (double **) malloc(*r * sizeof(double *));
 	if(AStorage == NULL) {
 		printf("matrix malloc failed exiting...\n");
@@ -90,6 +92,8 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 			exit(0);
 		}
 	}
+
+	/*read in matrix values*/
 	for(i = 0; i < *r; i++) {
 		for(j = 0; j < *c; j++) {
 			if(fread(&AStorage[i][j],sizeof(double),1,input) != 1) {
@@ -99,8 +103,8 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 		}
 	}
 
+	/*assign to proper matrix*/
 	*A = AStorage;
-	//assign to proper matrix
 	fclose(input);
 	return;
 }
