@@ -1,0 +1,15 @@
+#PBS -N mm_parallel
+#PBS -l select=4:ncpus=4:mpiprocs=4:mem=4gb:interconnect=10ge,walltime=00:10:00
+#PBS -j oe
+
+ cd /home/gdube/parallel/griffin_dube_HW06 ## Path/to/your/directory
+
+ module add openmpi/4.0.3-gcc
+ make clean
+ make
+
+ ./make-matrix -r 800 -c 800 -l 50 -u 500000 -o matrix1.dat
+ ./make-matrix -r 800 -c 800 -l 50 -u 500000 -o matrix2.dat
+
+ mpiexec -n 16 ./mm-parallel matrix1.dat matrix2.dat output.dat
+
