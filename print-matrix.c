@@ -75,6 +75,8 @@ void read_matrix(char *file_name, int *r, int *c, double ***A) {
 		exit(0);
 	}
 
+	printf("Reading... Rows = %d; Cols = %d;\n",*r,*c);
+
 	//read in matrix values
 	AStorage = (double **) malloc(*r * sizeof(double *));
 	if(AStorage == NULL) {
