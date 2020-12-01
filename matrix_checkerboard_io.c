@@ -101,9 +101,12 @@ void read_checkerboard_graph (
     /* Dynamically allocate two-dimensional matrix 'subs' */
 
     *storage = (void *) malloc (subsizes[0] * subsizes[1] * datum_size);
+		debug("%d: allocating storage\n",ID);
     *subs = (void **) malloc (subsizes[0] * sizeof(void *));
+		debug("%d: allocating substorage\n",ID);
     lptr = (void **) *subs;
     rptr = (void *) *storage;
+		debug("%d: allocating lptr-rptr\n",ID);
     for (i = 0; i < subsizes[0]; i++)
     {
         *(lptr++) = (void *) rptr;
@@ -150,7 +153,8 @@ void write_checkerboard_graph (
                 void ***subs,         /* OUT - 2D array */
                 void **storage,       /* OUT - Array elements */
                 MPI_Datatype dtype,   /* IN - Element type */
-                int *dims,            /* OUT - Array cols */
+                int rows,             /* OUT - Array cols */
+                int cols,             /* OUT - Array cols */
                 MPI_Comm grid_comm)   /* IN - Communicator */
 {
     int          datum_size = 0;      /* Bytes per elements */
@@ -188,21 +192,30 @@ void write_checkerboard_graph (
     debug( "%d: g_size[0] = %d, g_size[1] = %d\n", ID, grid_size[0], grid_size[1] );
     debug( "%d: g_peri[0] = %d, g_peri[1] = %d\n", ID, grid_period[0], grid_period[1] );
     debug( "%d: g_coor[0] = %d, g_coor[1] = %d\n", ID, grid_coord[0], grid_coord[1] );
-    debug( "%d: dims = %dx%d\n", ID, dims[R], dims[C] );
+    debug( "%d: dims = %dx%d\n", ID, rows, cols );
 
-    ret = MPI_File_open(grid_comm, s, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
-    error_out(ret, ID, NULL);
+    /*ret = MPI_File_open(grid_comm, s, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);*/
+    /*error_out(ret, ID, NULL);*/
     debug( "%d: Open file: %s\n", ID, s );
 
     if (grid_id == 0)
     {
-        ret = MPI_File_write(fh, dims, 2, MPI_INTEGER, &status);
-        error_out(ret, ID, &status);
-        debug( "%d: write size to file: %s\n", ID, s );
+				FILE *fp = fopen(s,"w");
+				fwrite(&rows,sizeof(int),1,fp);
+				fwrite(&cols,sizeof(int),1,fp);
+				fclose(fp);
+				fp = NULL;
+				/*ret = MPI_File_write(fh, &rows, 1, MPI_INT, &status);*/
+				/*error_out(ret, ID, &status);*/
+				/*ret = MPI_File_write(fh, &cols, 1, MPI_INT, &status);*/
+				/*error_out(ret, ID, &status);*/
+        debug( "%d: write size %d x %d to file: %s\n", ID, rows, cols ,s );
     }
+    ret = MPI_File_open(grid_comm, s, MPI_MODE_APPEND | MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+    error_out(ret, ID, NULL);
 
-    matsize[0] = dims[0];
-    matsize[1] = dims[1];
+    matsize[0] = rows;//dims[0];
+    matsize[1] = cols; //dims[1];
     debug( "%d: matsize[0] = %d, matsize[1] = %d\n", ID, matsize[0], matsize[1] );
 
     subsizes[0] = BLOCK_SIZE(grid_coord[0], grid_size[0], matsize[0]);
@@ -220,7 +233,7 @@ void write_checkerboard_graph (
     MPI_Type_commit(&subarray_t);
     
     debug( "%d: set_view\n", ID );
-    MPI_File_set_view(fh, sizeof(int), dtype, subarray_t, "native", MPI_INFO_NULL);
+    MPI_File_set_view(fh, sizeof(double), dtype, subarray_t, "native", MPI_INFO_NULL);
 
     debug( "%d: write data to file\n", ID );
     ret = MPI_File_write(fh, *storage, subsizes[0] * subsizes[1], dtype, &status);

@@ -45,7 +45,8 @@ void write_checkerboard_graph (
    void ***subs,         /* OUT - 2D array */
    void **storage,       /* OUT - Array elements */
    MPI_Datatype dtype,   /* IN - Element type */
-   int *dims,            /* OUT - Array cols */
+   int rows,             /* OUT - Array cols */
+   int cols,             /* OUT - Array cols */
    MPI_Comm grid_comm);  /* IN - Communicator */
 
 void error_out(int ret, int ID, MPI_Status *status);
