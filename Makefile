@@ -1,4 +1,4 @@
-CFLAGS = -g -Wall -Wstrict-prototypes -DDEBUG
+CFLAGS = -g -Wall -Wstrict-prototypes 
 PROGS = make-matrix print-matrix mm-serial mm-parallel
 LDFLAGS = -lm 
 CC = gcc
@@ -12,7 +12,7 @@ print-matrix: print-matrix.o
 
 mm-serial: mm-serial.o 
 
-mm-parallel: mm-parallel.o matrix_checkerboard_io.o 
+mm-parallel: mm-parallel.o matrix_checkerboard_io.o MyMPI.o
 	$(MCC) $(LDFLAGS) -o $@ $+
 
 clean:
