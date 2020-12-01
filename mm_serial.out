@@ -1,0 +1,51 @@
+rm -f make-matrix print-matrix mm-serial mm-parallel *.o core*
+gcc -g -Wall -Wstrict-prototypes    -c -o make-matrix.o make-matrix.c
+gcc -lm   make-matrix.o   -o make-matrix
+gcc -g -Wall -Wstrict-prototypes    -c -o print-matrix.o print-matrix.c
+gcc -lm   print-matrix.o   -o print-matrix
+gcc -g -Wall -Wstrict-prototypes    -c -o mm-serial.o mm-serial.c
+gcc -lm   mm-serial.o   -o mm-serial
+gcc -g -Wall -Wstrict-prototypes    -c -o mm-parallel.o mm-parallel.c
+gcc -g -Wall -Wstrict-prototypes    -c -o matrix_checkerboard_io.o matrix_checkerboard_io.c
+gcc -g -Wall -Wstrict-prototypes    -c -o MyMPI.o MyMPI.c
+mpicc -lm  -o mm-parallel mm-parallel.o matrix_checkerboard_io.o MyMPI.o
+Matrix one dimensions: 100 x 100
+Matrix two dimensions: 100 x 100
+Num. Processes: 1
+Matrix Size: 100x100
+Compute Time: 0.005002
+Matrix one dimensions: 200 x 200
+Matrix two dimensions: 200 x 200
+Num. Processes: 1
+Matrix Size: 200x200
+Compute Time: 0.042994
+Matrix one dimensions: 300 x 300
+Matrix two dimensions: 300 x 300
+Num. Processes: 1
+Matrix Size: 300x300
+Compute Time: 0.156142
+Matrix one dimensions: 400 x 400
+Matrix two dimensions: 400 x 400
+Num. Processes: 1
+Matrix Size: 400x400
+Compute Time: 0.471989
+Matrix one dimensions: 600 x 600
+Matrix two dimensions: 600 x 600
+Num. Processes: 1
+Matrix Size: 600x600
+Compute Time: 3.643934
+Matrix one dimensions: 800 x 800
+Matrix two dimensions: 800 x 800
+Num. Processes: 1
+Matrix Size: 800x800
+Compute Time: 8.596775
+Matrix one dimensions: 1200 x 1200
+Matrix two dimensions: 1200 x 1200
+Num. Processes: 1
+Matrix Size: 1200x1200
+Compute Time: 35.826792
+Matrix one dimensions: 1600 x 1600
+Matrix two dimensions: 1600 x 1600
+Num. Processes: 1
+Matrix Size: 1600x1600
+Compute Time: 85.688819

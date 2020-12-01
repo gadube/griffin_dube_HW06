@@ -1,0 +1,92 @@
+rm -f make-matrix print-matrix mm-serial mm-parallel *.o core*
+gcc -g -Wall -Wstrict-prototypes    -c -o make-matrix.o make-matrix.c
+gcc -lm   make-matrix.o   -o make-matrix
+gcc -g -Wall -Wstrict-prototypes    -c -o print-matrix.o print-matrix.c
+gcc -lm   print-matrix.o   -o print-matrix
+gcc -g -Wall -Wstrict-prototypes    -c -o mm-serial.o mm-serial.c
+gcc -lm   mm-serial.o   -o mm-serial
+gcc -g -Wall -Wstrict-prototypes    -c -o mm-parallel.o mm-parallel.c
+gcc -g -Wall -Wstrict-prototypes    -c -o matrix_checkerboard_io.o matrix_checkerboard_io.c
+gcc -g -Wall -Wstrict-prototypes    -c -o MyMPI.o MyMPI.c
+mpicc -lm  -o mm-parallel mm-parallel.o matrix_checkerboard_io.o MyMPI.o
+Num. Processes: 4
+Matrix Size: 100x100
+Compute Time: 0.001252
+Num. Processes: 4
+Matrix Size: 200x200
+Compute Time: 0.008433
+Num. Processes: 4
+Matrix Size: 300x300
+Compute Time: 0.028125
+Num. Processes: 4
+Matrix Size: 400x400
+Compute Time: 0.070804
+Num. Processes: 4
+Matrix Size: 600x600
+Compute Time: 0.256564
+Num. Processes: 4
+Matrix Size: 800x800
+Compute Time: 0.671354
+Num. Processes: 4
+Matrix Size: 1200x1200
+Compute Time: 2.313651
+Num. Processes: 4
+Matrix Size: 1600x1600
+Compute Time: 5.370568
+Num. Processes: 16
+Matrix Size: 100x100
+Compute Time: 0.000924
+Num. Processes: 16
+Matrix Size: 200x200
+Compute Time: 0.002751
+Num. Processes: 16
+Matrix Size: 300x300
+Compute Time: 0.008989
+Num. Processes: 16
+Matrix Size: 400x400
+Compute Time: 0.019367
+Num. Processes: 16
+Matrix Size: 600x600
+Compute Time: 0.059317
+Num. Processes: 16
+Matrix Size: 800x800
+Compute Time: 0.150695
+Num. Processes: 16
+Matrix Size: 1200x1200
+Compute Time: 0.533613
+Num. Processes: 16
+Matrix Size: 1600x1600
+Compute Time: 1.434840
+Num. Processes: 25
+Matrix Size: 100x100
+Compute Time: 0.001056
+Num. Processes: 25
+Matrix Size: 200x200
+Compute Time: 0.002595
+Num. Processes: 25
+Matrix Size: 300x300
+Compute Time: 0.005691
+Num. Processes: 25
+Matrix Size: 400x400
+Compute Time: 0.012786
+Num. Processes: 25
+Matrix Size: 600x600
+Compute Time: 0.040695
+Num. Processes: 25
+Matrix Size: 800x800
+Compute Time: 0.102339
+Num. Processes: 25
+Matrix Size: 1200x1200
+Compute Time: 0.362405
+Num. Processes: 25
+Matrix Size: 1600x1600
+Compute Time: 0.903683
+Num. Processes: 25
+Matrix Size: 300x300
+Compute Time: 0.005846
+Num. Processes: 25
+Matrix Size: 600x600
+Compute Time: 0.039908
+Num. Processes: 25
+Matrix Size: 1200x1200
+Compute Time: 0.361712

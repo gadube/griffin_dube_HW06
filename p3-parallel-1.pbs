@@ -1,0 +1,46 @@
+#PBS -N mm_parallel
+#PBS -l select=1:ncpus=25:mpiprocs=25:mem=200gb:interconnect=25ge,walltime=15:00:00
+#PBS -j oe
+#PBS -m abe
+#PBS -M gdube@g.clemson.edu
+
+module add openmpi/4.0.3-gcc
+
+cd /home/gdube/parallel/griffin_dube_HW06
+make clean
+make
+
+./make-matrix -r 100 -c 100 -l 50 -u 500000 -o 100_m1.dat
+./make-matrix -r 100 -c 100 -l 50 -u 500000 -o 100_m2.dat
+./make-matrix -r 200 -c 200 -l 50 -u 500000 -o 200_m1.dat
+./make-matrix -r 200 -c 200 -l 50 -u 500000 -o 200_m2.dat
+./make-matrix -r 300 -c 300 -l 50 -u 500000 -o 300_m1.dat
+./make-matrix -r 300 -c 300 -l 50 -u 500000 -o 300_m2.dat
+./make-matrix -r 400 -c 400 -l 50 -u 500000 -o 400_m1.dat
+./make-matrix -r 400 -c 400 -l 50 -u 500000 -o 400_m2.dat
+./make-matrix -r 600 -c 600 -l 50 -u 500000 -o 600_m1.dat
+./make-matrix -r 600 -c 600 -l 50 -u 500000 -o 600_m2.dat
+./make-matrix -r 800 -c 800 -l 50 -u 500000 -o 800_m1.dat
+./make-matrix -r 800 -c 800 -l 50 -u 500000 -o 800_m2.dat
+./make-matrix -r 1200 -c 1200 -l 50 -u 500000 -o 1200_m1.dat
+./make-matrix -r 1200 -c 1200 -l 50 -u 500000 -o 1200_m2.dat
+./make-matrix -r 1600 -c 1600 -l 50 -u 500000 -o 1600_m1.dat
+./make-matrix -r 1600 -c 1600 -l 50 -u 500000 -o 1600_m2.dat
+
+for PROCS in 4 16 25
+do
+ mpirun -np $PROCS ./mm-parallel 100_m1.dat 100_m2.dat outfile.dat
+ mpirun -np $PROCS ./mm-parallel 200_m1.dat 200_m2.dat outfile.dat
+ mpirun -np $PROCS ./mm-parallel 300_m1.dat 300_m2.dat outfile.dat
+ mpirun -np $PROCS ./mm-parallel 400_m1.dat 400_m2.dat outfile.dat
+ mpirun -np $PROCS ./mm-parallel 600_m1.dat 600_m2.dat outfile.dat
+ mpirun -np $PROCS ./mm-parallel 800_m1.dat 800_m2.dat outfile.dat
+ mpirun -np $PROCS ./mm-parallel 1200_m1.dat 1200_m2.dat outfile.dat
+ mpirun -np $PROCS ./mm-parallel 1600_m1.dat 1600_m2.dat outfile.dat
+done
+
+mpirun -np $PROCS ./mm-parallel 300_m1.dat 300_m2.dat outfile.dat
+mpirun -np $PROCS ./mm-parallel 600_m1.dat 600_m2.dat outfile.dat
+mpirun -np $PROCS ./mm-parallel 1200_m1.dat 1200_m2.dat outfile.dat
+
+rm -rf *.dat
